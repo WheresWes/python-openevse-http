@@ -152,6 +152,21 @@ class OpenEVSEWebsocket:
                 await self._set_state(STATE_DISCONNECTED)
                 await asyncio.sleep(5)
 
+    def reset(self):
+        """Reset the websocket from stopped state to allow reconnection.
+
+        This should be called before listen() when the websocket has
+        reached STATE_STOPPED due to too many retries or transient errors
+        (not auth failures) and needs to be restarted.
+        """
+        if self._state == STATE_STOPPED:
+            _LOGGER.debug(
+                "Resetting websocket from stopped state for reconnection"
+            )
+            self._state = STATE_DISCONNECTED
+            self.failed_attempts = 0
+            self._error_reason = None
+
     async def listen(self):
         """Start the listening websocket."""
         self.failed_attempts = 0

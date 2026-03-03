@@ -296,6 +296,15 @@ class OpenEVSE:
                 raise AlreadyListening
             if self._ws_listening and self.websocket.state != "connected":
                 self._ws_listening = False
+            # Reset websocket from stopped state so it can reconnect.
+            # This handles the case where the websocket hit max retries
+            # due to a transient network issue and is now permanently
+            # stuck in STATE_STOPPED.
+            if self.websocket.state == STATE_STOPPED:
+                _LOGGER.debug(
+                    "Websocket in stopped state, resetting for reconnection"
+                )
+                self.websocket.reset()
         self._start_listening()
 
     def _start_listening(self):
