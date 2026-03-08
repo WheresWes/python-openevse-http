@@ -103,6 +103,8 @@ class OpenEVSE:
         self.callback: Callable | None = None
         self._loop = None
         self.tasks = None
+        self._listen_task = None
+        self._keepalive_task = None
         self._session = session
         self._session_external = session is not None
 
@@ -317,10 +319,20 @@ class OpenEVSE:
                 self._loop = asyncio.get_event_loop()
                 _LOGGER.debug("Using new event loop...")
 
+        # Don't create new tasks if a listen task is already running.
+        # The old check (if not self._ws_listening) was insufficient because
+        # _ws_listening gets set to False on disconnect while listen() is
+        # still retrying with backoff, causing duplicate task accumulation.
+        if self._listen_task and not self._listen_task.done():
+            _LOGGER.debug("Listen task already running, skipping")
+            return
+
         if not self._ws_listening:
             _LOGGER.debug("Setting up websocket ping...")
-            self._loop.create_task(self.websocket.listen())
-            self._loop.create_task(self.repeat(300, self.websocket.keepalive))
+            self._listen_task = self._loop.create_task(self.websocket.listen())
+            self._keepalive_task = self._loop.create_task(
+                self.repeat(300, self.websocket.keepalive)
+            )
             pending = asyncio.all_tasks()
             self._ws_listening = True
             try:
