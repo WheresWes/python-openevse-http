@@ -246,11 +246,11 @@ class OpenEVSE:
 
     async def update(self) -> None:
         """Update the values."""
-        # TODO: add addiontal endpoints to update
-        urls = [f"{self.url}config"]
-
-        if not self._ws_listening:
-            urls = [f"{self.url}status", f"{self.url}config"]
+        # Always fetch both /status and /config via HTTP regardless of
+        # websocket state. This prevents entity toggling caused by
+        # switching data sources during websocket reconnection cycles.
+        # The websocket still provides real-time updates between polls.
+        urls = [f"{self.url}status", f"{self.url}config"]
 
         for url in urls:
             _LOGGER.debug("Updating data from %s", url)
